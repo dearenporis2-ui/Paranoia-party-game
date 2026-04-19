@@ -150,9 +150,55 @@ input[type="text"]::placeholder { color:var(--muted); }
 .secret-title { font-family:'Bebas Neue',sans-serif; font-size:52px; letter-spacing:4px; color:var(--muted); }
 .secret-picked { font-size:15px; color:var(--white); }
 .secret-picked strong { color:var(--red); font-size:20px; }
+
+/* BG OVERLAY */
+#bgLayer {
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-size:cover; background-position:center;
+  transition:opacity .8s ease;
+  opacity:0;
+}
+#bgLayer.active { opacity:1; }
+#bgLayer::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.7) 100%);
+}
+.screen { position:relative; z-index:1; }
+
+/* MUSIC BAR */
+#musicBar {
+  position:fixed; bottom:16px; right:16px; z-index:100;
+  display:none; align-items:center; gap:8px;
+  background:rgba(0,0,0,0.6); border:1px solid #333;
+  border-radius:20px; padding:6px 12px; backdrop-filter:blur(8px);
+}
+#musicBar.visible { display:flex; }
+#musicBar .music-icon { font-size:14px; animation:spin 3s linear infinite; }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+#musicBar .music-label { font-size:11px; color:var(--muted); letter-spacing:1px; max-width:120px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+#muteBtn { background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:0; }
+
+/* MEDIA SELECTORS */
+.media-section { display:flex; flex-direction:column; gap:8px; }
+.media-grid { display:flex; flex-direction:column; gap:6px; }
+.media-opt {
+  display:flex; align-items:center; gap:10px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:10px 14px; cursor:pointer; transition:all .15s;
+}
+.media-opt:hover { border-color:#444; }
+.media-opt.active { border-color:var(--red); background:var(--red-dim); }
+.media-opt.none-opt { color:var(--muted); }
+.media-opt .opt-icon { font-size:20px; flex-shrink:0; }
+.media-opt .opt-info { display:flex; flex-direction:column; }
+.media-opt .opt-name { font-size:13px; font-weight:500; }
+.media-opt .opt-desc { font-size:11px; color:var(--muted); }
+.media-opt.active .opt-desc { color:#ff9999; }
 </style>
 </head>
 <body>
+<div id="bgLayer"></div>
+<audio id="bgAudio" loop></audio>
 
 <!-- LANDING -->
 <div class="screen active" id="landing">
@@ -200,6 +246,39 @@ input[type="text"]::placeholder { color:var(--muted); }
     <span class="waiting-anim">&#9203;</span> waiting for host to start...
   </div>
   <div class="host-controls" id="hostControls" style="display:none">
+
+    <div class="media-section">
+      <div class="pack-label" style="margin-bottom:4px">&#127758; map / background</div>
+      <div class="media-grid" id="bgGrid">
+        <div class="media-opt none-opt active" data-bg="">
+          <span class="opt-icon">&#9899;</span>
+          <div class="opt-info"><span class="opt-name">No background</span><span class="opt-desc">Default dark theme</span></div>
+        </div>
+        <div class="media-opt" data-bg="lake_BG.jpg">
+          <span class="opt-icon">&#127809;</span>
+          <div class="opt-info"><span class="opt-name">Autumn Lake</span><span class="opt-desc">Moody fall vibes</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="media-section">
+      <div class="pack-label" style="margin-bottom:4px">&#127925; background music</div>
+      <div class="media-grid" id="musicGrid">
+        <div class="media-opt none-opt active" data-music="">
+          <span class="opt-icon">&#128263;</span>
+          <div class="opt-info"><span class="opt-name">No music</span><span class="opt-desc">Silence</span></div>
+        </div>
+        <div class="media-opt" data-music="blue-garland.mp3" data-label="Blue Garland">
+          <span class="opt-icon">&#127925;</span>
+          <div class="opt-info"><span class="opt-name">Blue Garland</span><span class="opt-desc">Chill ambient</span></div>
+        </div>
+        <div class="media-opt" data-music="shandr_fever.mp3" data-label="Fever">
+          <span class="opt-icon">&#128293;</span>
+          <div class="opt-info"><span class="opt-name">Fever</span><span class="opt-desc">Tense &amp; chaotic</span></div>
+        </div>
+      </div>
+    </div>
+
     <button class="btn btn-primary" id="startBtn" disabled>Start Game</button>
   </div>
 </div>
@@ -380,6 +459,9 @@ let hasPicked   = false;
 let lastScreen  = "";
 let timerInterval = null;
 let timerDeadline = null;
+let selectedBg    = "";
+let selectedMusic = "";
+let selectedMusicLabel = "";
 
 // ─── HELPERS ────────────────────────────────
 function showScreen(id) {
@@ -428,7 +510,7 @@ createBtn.addEventListener("click", async () => {
   roomRef = db.ref("rooms/" + myRoom);
   try {
     await roomRef.set({
-      state: { screen: "lobby", question: "", pickedPerson: "", pickedBy: "", usedQs: [], pack: selectedPack, timerEnd: 0 },
+      state: { screen: "lobby", question: "", pickedPerson: "", pickedBy: "", usedQs: [], pack: selectedPack, timerEnd: 0, bg: "", music: "", musicLabel: "" },
       votes: { voterIds: {} },
       players: {}
     });
@@ -488,6 +570,8 @@ function listenToRoom() {
     usedQs   = s.usedQs || [];
     currentQ = s.question || "";
     selectedPack = s.pack || "savage";
+    applyBg(s.bg || "");
+    applyMusic(s.music || "", s.musicLabel || "");
 
     switch (s.screen) {
       case "lobby":
@@ -626,7 +710,10 @@ function startNewRound() {
     usedQs: [...usedQs, q],
     pickedPerson: "", pickedBy: "",
     pack: selectedPack,
-    timerEnd
+    timerEnd,
+    bg: selectedBg,
+    music: selectedMusic,
+    musicLabel: selectedMusicLabel
   });
   roomRef.child("votes").set({ voterIds: {} });
 }
@@ -680,6 +767,64 @@ function resolveVote(reveal, secret) {
   });
 }
 
+// ─── BG SELECTOR ────────────────────────────
+document.querySelectorAll("#bgGrid .media-opt").forEach(opt => {
+  opt.addEventListener("click", () => {
+    document.querySelectorAll("#bgGrid .media-opt").forEach(o => o.classList.remove("active"));
+    opt.classList.add("active");
+    selectedBg = opt.dataset.bg;
+    applyBg(selectedBg);
+    if (roomRef) roomRef.child("state").update({ bg: selectedBg });
+  });
+});
+
+document.querySelectorAll("#musicGrid .media-opt").forEach(opt => {
+  opt.addEventListener("click", () => {
+    document.querySelectorAll("#musicGrid .media-opt").forEach(o => o.classList.remove("active"));
+    opt.classList.add("active");
+    selectedMusic = opt.dataset.music;
+    selectedMusicLabel = opt.dataset.label || "";
+    applyMusic(selectedMusic, selectedMusicLabel);
+    if (roomRef) roomRef.child("state").update({ music: selectedMusic, musicLabel: selectedMusicLabel });
+  });
+});
+
+function applyBg(src) {
+  const layer = document.getElementById("bgLayer");
+  if (src) {
+    layer.style.backgroundImage = `url('${src}')`;
+    layer.classList.add("active");
+  } else {
+    layer.classList.remove("active");
+    layer.style.backgroundImage = "";
+  }
+}
+
+let currentMusicSrc = "";
+function applyMusic(src, label) {
+  const audio = document.getElementById("bgAudio");
+  const bar   = document.getElementById("musicBar");
+  if (src === currentMusicSrc) return;
+  currentMusicSrc = src;
+  if (src) {
+    audio.src = src;
+    audio.volume = 0.4;
+    audio.play().catch(() => {});
+    document.querySelector("#musicBar .music-label").textContent = label || src;
+    bar.classList.add("visible");
+  } else {
+    audio.pause();
+    audio.src = "";
+    bar.classList.remove("visible");
+  }
+}
+
+document.getElementById("muteBtn").addEventListener("click", () => {
+  const audio = document.getElementById("bgAudio");
+  audio.muted = !audio.muted;
+  document.getElementById("muteBtn").textContent = audio.muted ? "🔇" : "🔊";
+});
+
 // ─── NEXT ROUND ─────────────────────────────
 function nextRound() {
   if (isHost) { startNewRound(); }
@@ -688,5 +833,11 @@ function nextRound() {
 document.getElementById("nextRoundBtn").addEventListener("click",  nextRound);
 document.getElementById("nextRoundBtn2").addEventListener("click", nextRound);
 </script>
+<!-- MUSIC BAR -->
+<div id="musicBar">
+  <span class="music-icon">&#9835;</span>
+  <span class="music-label"></span>
+  <button id="muteBtn">&#128266;</button>
+</div>
 </body>
 </html>
