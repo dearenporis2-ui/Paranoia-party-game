@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>PARANOIA</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
 <style>
   :root {
     --bg: #0a0a0a;
@@ -27,7 +28,6 @@
     overflow-x: hidden;
   }
 
-  /* noise overlay */
   body::before {
     content:'';
     position:fixed;
@@ -386,9 +386,7 @@
     text-align: center;
   }
 
-  .secret-icon {
-    font-size: 64px;
-  }
+  .secret-icon { font-size: 64px; }
 
   .secret-title {
     font-family: 'Bebas Neue', sans-serif;
@@ -397,15 +395,8 @@
     color: var(--muted);
   }
 
-  .secret-picked {
-    font-size: 15px;
-    color: var(--white);
-  }
-
-  .secret-picked strong {
-    color: var(--red);
-    font-size: 20px;
-  }
+  .secret-picked { font-size: 15px; color: var(--white); }
+  .secret-picked strong { color: var(--red); font-size: 20px; }
 </style>
 </head>
 <body>
@@ -529,6 +520,7 @@ const QUESTIONS = [
   "who is most likely to accidentally expose a group secret?",
   "who do you think is the most emotionally unavailable?",
   "who would date someone just for clout?",
+  "who in this room would survive a zombie apocalypse?",
   "who is most likely to become a conspiracy theorist?",
   "who is most likely to have an enemy they haven't told anyone about?",
   "who has the worst takes on everything?",
@@ -541,17 +533,20 @@ const QUESTIONS = [
 // ─────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────
-let myName    = "";
-let myRoom    = "";
-let isHost    = false;
-let players   = [];  // [{name}]
-let usedQs    = [];
-let currentQ  = "";
+let myName       = "";
+let myRoom       = "";
+let isHost       = false;
+let players      = [];   // [{name, peerId}]  — host tracks all
+let usedQs       = [];
+let currentQ     = "";
 let pickedPerson = "";
-let pickedBy  = "";
-let votes     = { reveal: [], secret: [] };
-let ws        = null;
-let pingTimer = null;
+let pickedBy     = "";
+let votes        = { reveal: [], secret: [] };
+
+// PeerJS objects
+let myPeer       = null;  // our Peer instance
+let hostConn     = null;  // non-hosts: single DataConnection to host
+let guestConns   = {};    // host: map peerId → DataConnection
 
 // ─────────────────────────────────────────────
 // SCREEN HELPERS
@@ -562,13 +557,13 @@ function showScreen(id) {
 }
 
 // ─────────────────────────────────────────────
-// LANDING LOGIC
+// LANDING UI
 // ─────────────────────────────────────────────
-const nameInput  = document.getElementById("nameInput");
-const codeInput  = document.getElementById("codeInput");
-const createBtn  = document.getElementById("createBtn");
-const joinBtn    = document.getElementById("joinBtn");
-const landError  = document.getElementById("landError");
+const nameInput = document.getElementById("nameInput");
+const codeInput = document.getElementById("codeInput");
+const createBtn = document.getElementById("createBtn");
+const joinBtn   = document.getElementById("joinBtn");
+const landError = document.getElementById("landError");
 
 nameInput.addEventListener("input", () => {
   const hasName = nameInput.value.trim().length > 0;
@@ -581,113 +576,233 @@ codeInput.addEventListener("input", () => {
   joinBtn.disabled = !(nameInput.value.trim().length > 0 && codeInput.value.length === 4);
 });
 
+// ─────────────────────────────────────────────
+// PEERJS NETWORKING
+// Room code = last 4 digits of host's peer ID
+// Host peer ID = "paranoia-XXXX-<random>"
+// Guests connect to that peer ID via the room code.
+// ─────────────────────────────────────────────
+
+function peerIdForRoom(code) {
+  // We store the host's full peer id in a global when hosting,
+  // and guests discover it by connecting to "paranoia-XXXX" directly.
+  // Simple approach: host peer ID IS "paranoia-XXXX".
+  return "paranoia-room-" + code;
+}
+
+// HOST: create a Peer with a fixed ID derived from the room code
+function hostRoom(name, code) {
+  myName = name;
+  myRoom = code;
+  isHost = true;
+  landError.textContent = "";
+  createBtn.disabled = true;
+  createBtn.textContent = "Connecting...";
+
+  const peerId = peerIdForRoom(code);
+  myPeer = new Peer(peerId);
+
+  myPeer.on("open", (id) => {
+    // Add ourselves to the player list
+    players = [{ name: myName, peerId: id }];
+    renderLobby();
+  });
+
+  myPeer.on("connection", (conn) => {
+    conn.on("open", () => {
+      guestConns[conn.peer] = conn;
+      conn.on("data", (data) => handleMsg(data, conn.peer));
+      conn.on("close", () => {
+        // Remove disconnected player
+        players = players.filter(p => p.peerId !== conn.peer);
+        delete guestConns[conn.peer];
+        broadcast({ type: "sync", players: players.map(p => ({ name: p.name, peerId: p.peerId })) });
+        renderLobby();
+      });
+    });
+  });
+
+  myPeer.on("error", (err) => {
+    landError.textContent = err.type === "unavailable-id"
+      ? "Room code taken. Try a different one."
+      : "Connection error: " + err.message;
+    createBtn.disabled = false;
+    createBtn.textContent = "Create Room";
+  });
+}
+
+// GUEST: connect to the host's peer
+function joinRoom(name, code) {
+  myName = name;
+  myRoom = code;
+  isHost = false;
+  landError.textContent = "";
+  joinBtn.disabled = true;
+  joinBtn.textContent = "Connecting...";
+
+  myPeer = new Peer(); // random peer ID for guests
+
+  myPeer.on("open", () => {
+    const hostPeerId = peerIdForRoom(code);
+    hostConn = myPeer.connect(hostPeerId, { reliable: true });
+
+    hostConn.on("open", () => {
+      // Tell host who we are
+      hostConn.send({ type: "join", name: myName });
+    });
+
+    hostConn.on("data", (data) => handleMsg(data, null));
+
+    hostConn.on("close", () => {
+      landError.textContent = "Disconnected from host.";
+      showScreen("landing");
+      joinBtn.disabled = false;
+      joinBtn.textContent = "Join Room";
+    });
+
+    hostConn.on("error", () => {
+      landError.textContent = "Could not connect. Check the room code.";
+      joinBtn.disabled = false;
+      joinBtn.textContent = "Join Room";
+    });
+  });
+
+  myPeer.on("error", (err) => {
+    if (err.type === "peer-unavailable") {
+      landError.textContent = "Room not found. Check the code.";
+    } else {
+      landError.textContent = "Connection error: " + err.message;
+    }
+    joinBtn.disabled = false;
+    joinBtn.textContent = "Join Room";
+  });
+}
+
+// HOST: send to all guests
+function broadcast(data) {
+  Object.values(guestConns).forEach(conn => {
+    if (conn.open) conn.send(data);
+  });
+}
+
+// HOST: send to one guest by peerId
+function sendTo(peerId, data) {
+  const conn = guestConns[peerId];
+  if (conn && conn.open) conn.send(data);
+}
+
+// GUEST: send to host
+function sendToHost(data) {
+  if (hostConn && hostConn.open) hostConn.send(data);
+}
+
+// Anyone: send a game message appropriately
+function send(data) {
+  if (isHost) {
+    // Host handles its own messages directly, then relays to guests
+    handleMsg(data, null);
+    broadcast(data);
+  } else {
+    sendToHost(data);
+  }
+}
+
+// ─────────────────────────────────────────────
+// BUTTON WIRING
+// ─────────────────────────────────────────────
 createBtn.addEventListener("click", () => {
   const name = nameInput.value.trim();
   if (!name) return;
-  myName = name;
-  myRoom = Math.floor(1000 + Math.random() * 9000).toString();
-  isHost = true;
-  connectWS(() => {
-    send({ type: "join", name: myName, room: myRoom });
-  });
+  const code = Math.floor(1000 + Math.random() * 9000).toString();
+  hostRoom(name, code);
 });
 
 joinBtn.addEventListener("click", () => {
   const name = nameInput.value.trim();
   const code = codeInput.value.trim();
   if (!name || code.length !== 4) return;
-  myName = name;
-  myRoom = code;
-  isHost = false;
-  connectWS(() => {
-    send({ type: "join", name: myName, room: myRoom });
-  });
+  joinRoom(name, code);
 });
-
-// ─────────────────────────────────────────────
-// WEBSOCKET — Ably raw protocol
-// ─────────────────────────────────────────────
-const ABLY_KEY = "HtCWNA.nyttHg:Zq7f8ZfaTm-7zrzR_CoqWKPVIRiBNb43r2h6nE1IObo";
-const ABLY_CH  = () => `paranoia-${myRoom}`;
-
-function connectWS(onReady) {
-  if (ws) { try { ws.close(); } catch(e){} }
-  ws = new WebSocket(`wss://realtime.ably.io/?key=${ABLY_KEY}&format=json&heartbeats=true&v=3`);
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ action: 10, channel: ABLY_CH() }));
-    pingTimer = setInterval(() => {
-      if (ws && ws.readyState === WebSocket.OPEN)
-        ws.send(JSON.stringify({ action: 0 }));
-    }, 15000);
-  };
-
-  ws.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
-    if (msg.action === 11) { onReady(); return; } // ATTACHED
-    if (msg.action === 15 && msg.channel === ABLY_CH()) {
-      (msg.messages || []).forEach(m => {
-        let d; try { d = typeof m.data === "string" ? JSON.parse(m.data) : m.data; } catch(e){ return; }
-        handleMsg(d);
-      });
-    }
-  };
-
-  ws.onerror = () => { landError.textContent = "Connection error. Try again."; };
-}
-
-function send(data) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify({
-    action: 15,
-    channel: ABLY_CH(),
-    messages: [{ name: "ev", data: JSON.stringify(data) }]
-  }));
-}
 
 // ─────────────────────────────────────────────
 // MESSAGE HANDLER
 // ─────────────────────────────────────────────
-function handleMsg(d) {
+function handleMsg(d, fromPeerId) {
   switch(d.type) {
 
     case "join":
-      if (!players.find(p => p.name === d.name)) players.push({ name: d.name });
-      renderLobby();
-      // If I'm host, broadcast full player list so new joiners are in sync
-      if (isHost) send({ type: "sync", players: players.map(p => p.name) });
+      // Only host receives join; relay sync to everyone
+      if (isHost) {
+        if (!players.find(p => p.name === d.name)) {
+          players.push({ name: d.name, peerId: fromPeerId });
+        }
+        // Send the new joiner the full sync
+        sendTo(fromPeerId, {
+          type: "sync",
+          players: players.map(p => ({ name: p.name, peerId: p.peerId }))
+        });
+        // Broadcast update to everyone else
+        broadcast({
+          type: "sync",
+          players: players.map(p => ({ name: p.name, peerId: p.peerId }))
+        });
+        renderLobby();
+      }
       break;
 
     case "sync":
-      players = d.players.map(n => ({ name: n }));
+      players = d.players;
       renderLobby();
       break;
 
     case "start":
-      currentQ    = d.question;
-      usedQs      = d.usedQs;
+      currentQ     = d.question;
+      usedQs       = d.usedQs;
       pickedPerson = "";
-      pickedBy    = "";
-      votes       = { reveal: [], secret: [] };
+      pickedBy     = "";
+      votes        = { reveal: [], secret: [] };
       renderGame();
       showScreen("game");
       break;
 
     case "picked":
-      pickedPerson = d.picked;
-      pickedBy    = d.by;
-      votes       = { reveal: [], secret: [] };
-      renderPicked();
-      showScreen("picked");
+      // Only host relays picked to everyone (guests send to host first)
+      if (isHost && fromPeerId !== null) {
+        // Relay to all guests
+        broadcast({ type: "picked", picked: d.picked, by: d.by });
+        // Handle locally too
+        pickedPerson = d.picked;
+        pickedBy     = d.by;
+        votes        = { reveal: [], secret: [] };
+        renderPicked();
+        showScreen("picked");
+      } else if (!isHost) {
+        // Received from host's broadcast
+        pickedPerson = d.picked;
+        pickedBy     = d.by;
+        votes        = { reveal: [], secret: [] };
+        renderPicked();
+        showScreen("picked");
+      }
       break;
 
     case "vote":
-      if (!votes[d.choice].includes(d.name)) votes[d.choice].push(d.name);
-      updateVoteCounts();
-      // Check if everyone voted
-      if (votes.reveal.length + votes.secret.length >= players.length) {
-        resolveVote();
+      if (isHost) {
+        // Collect all votes centrally, then relay the running tally
+        if (!votes[d.choice].includes(d.name)) votes[d.choice].push(d.name);
+        const tally = { type: "tally", reveal: votes.reveal.length, secret: votes.secret.length, total: players.length };
+        broadcast(tally);
+        updateVoteCountsRaw(votes.reveal.length, votes.secret.length, players.length);
+        if (votes.reveal.length + votes.secret.length >= players.length) {
+          resolveVote();
+        }
+      } else {
+        sendToHost(d);
       }
+      break;
+
+    case "tally":
+      updateVoteCountsRaw(d.reveal, d.secret, d.total);
       break;
 
     case "reveal":
@@ -736,10 +851,13 @@ function renderLobby() {
 document.getElementById("startBtn").addEventListener("click", () => {
   if (!isHost || players.length < 2) return;
   const available = QUESTIONS.filter(q => !usedQs.includes(q));
-  if (available.length === 0) { usedQs = []; }
-  const q = available[Math.floor(Math.random() * available.length)];
-  usedQs.push(q);
-  send({ type: "start", question: q, usedQs });
+  const pool = available.length === 0 ? QUESTIONS : available;
+  const q = pool[Math.floor(Math.random() * pool.length)];
+  usedQs = [...usedQs.filter(x => x !== q), q];
+  // Host broadcasts start (handleMsg will pick it up too)
+  const msg = { type: "start", question: q, usedQs };
+  handleMsg(msg, null);
+  broadcast(msg);
 });
 
 // ─────────────────────────────────────────────
@@ -755,13 +873,19 @@ function renderGame() {
 }
 
 function pickPlayer(name) {
-  // Only the person who answers sends the picked message
   document.querySelectorAll(".pick-btn").forEach(b => b.classList.remove("selected"));
   document.querySelectorAll(".pick-btn").forEach(b => {
     if (b.textContent === name) b.classList.add("selected");
   });
   setTimeout(() => {
-    send({ type: "picked", picked: name, by: myName });
+    const msg = { type: "picked", picked: name, by: myName };
+    if (isHost) {
+      // Host relays directly
+      broadcast(msg);
+      handleMsg(msg, null);
+    } else {
+      sendToHost(msg);
+    }
   }, 300);
 }
 
@@ -778,27 +902,40 @@ function renderPicked() {
 document.getElementById("voteReveal").addEventListener("click", () => {
   document.getElementById("voteReveal").disabled = true;
   document.getElementById("voteSecret").disabled = true;
-  send({ type: "vote", choice: "reveal", name: myName });
+  const msg = { type: "vote", choice: "reveal", name: myName };
+  if (isHost) {
+    handleMsg(msg, null);
+  } else {
+    sendToHost(msg);
+  }
 });
 
 document.getElementById("voteSecret").addEventListener("click", () => {
   document.getElementById("voteReveal").disabled = true;
   document.getElementById("voteSecret").disabled = true;
-  send({ type: "vote", choice: "secret", name: myName });
+  const msg = { type: "vote", choice: "secret", name: myName };
+  if (isHost) {
+    handleMsg(msg, null);
+  } else {
+    sendToHost(msg);
+  }
 });
 
-function updateVoteCounts() {
-  const total = players.length;
-  const done  = votes.reveal.length + votes.secret.length;
+function updateVoteCountsRaw(reveal, secret, total) {
+  const done = reveal + secret;
   document.getElementById("voteCounts").textContent =
-    `${done}/${total} voted · ${votes.reveal.length} reveal · ${votes.secret.length} secret`;
+    `${done}/${total} voted · ${reveal} reveal · ${secret} secret`;
 }
 
 function resolveVote() {
   if (votes.reveal.length >= votes.secret.length) {
-    send({ type: "reveal", question: currentQ, picked: pickedPerson, by: pickedBy });
+    const msg = { type: "reveal", question: currentQ, picked: pickedPerson, by: pickedBy };
+    broadcast(msg);
+    handleMsg(msg, null);
   } else {
-    send({ type: "secret", picked: pickedPerson });
+    const msg = { type: "secret", picked: pickedPerson };
+    broadcast(msg);
+    handleMsg(msg, null);
   }
 }
 
@@ -808,10 +945,12 @@ function resolveVote() {
 function nextRound() {
   if (!isHost) { showScreen("lobby"); renderLobby(); return; }
   const available = QUESTIONS.filter(q => !usedQs.includes(q));
-  if (available.length === 0) { usedQs = []; }
-  const q = available[Math.floor(Math.random() * available.length)];
-  usedQs.push(q);
-  send({ type: "start", question: q, usedQs });
+  const pool = available.length === 0 ? QUESTIONS : available;
+  const q = pool[Math.floor(Math.random() * pool.length)];
+  usedQs = [...usedQs.filter(x => x !== q), q];
+  const msg = { type: "start", question: q, usedQs };
+  handleMsg(msg, null);
+  broadcast(msg);
 }
 
 document.getElementById("nextRoundBtn").addEventListener("click",  nextRound);
