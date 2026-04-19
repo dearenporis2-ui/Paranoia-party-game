@@ -93,9 +93,9 @@ input[type="text"]::placeholder { color:var(--muted); }
 /* GAME */
 #game { padding:24px 20px; gap:20px; }
 .question-card {
-  flex:1; background:var(--surface); border:1px solid var(--border); border-radius:16px;
+  flex:1; background:rgba(17,17,17,0.82); border:1px solid var(--border); border-radius:16px;
   padding:28px 24px; display:flex; flex-direction:column; justify-content:center;
-  gap:24px; position:relative; overflow:hidden;
+  gap:24px; position:relative; overflow:hidden; backdrop-filter:blur(2px);
 }
 .question-card::before {
   content:'?'; position:absolute; right:-10px; bottom:-20px;
@@ -113,9 +113,10 @@ input[type="text"]::placeholder { color:var(--muted); }
 .pick-label { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
 .pick-grid { display:flex; flex-direction:column; gap:8px; }
 .pick-btn {
-  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  background:rgba(17,17,17,0.8); border:1px solid var(--border); border-radius:10px;
   padding:14px 18px; color:var(--white); font-family:'DM Sans',sans-serif;
   font-size:15px; font-weight:500; text-align:left; cursor:pointer; transition:all .15s;
+  backdrop-filter:blur(2px);
 }
 .pick-btn:active,.pick-btn:hover { border-color:var(--red); color:var(--red); }
 .pick-btn.selected { background:var(--red-dim); border-color:var(--red); color:var(--white); }
@@ -161,7 +162,7 @@ input[type="text"]::placeholder { color:var(--muted); }
 #bgLayer.active { opacity:1; }
 #bgLayer::after {
   content:''; position:absolute; inset:0;
-  background:linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.7) 100%);
+  background:linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.35) 100%);
 }
 .screen { position:relative; z-index:1; }
 
@@ -325,7 +326,12 @@ input[type="text"]::placeholder { color:var(--muted); }
   <div class="reveal-answer" id="revealAnswer"></div>
   <div class="reveal-by">was picked by</div>
   <div class="reveal-answer" id="revealBy" style="color:var(--yellow);animation:shake .4s ease"></div>
-  <button class="btn btn-primary" id="nextRoundBtn" style="max-width:300px">Next Round &#8594;</button>
+  <div id="nextRoundHost" style="width:100%;max-width:300px">
+    <button class="btn btn-primary" id="nextRoundBtn" style="width:100%">Next Round &#8594;</button>
+  </div>
+  <div id="nextRoundWait" style="display:none;font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase">
+    <span class="waiting-anim">&#9203;</span> waiting for host...
+  </div>
 </div>
 
 <!-- SECRET -->
@@ -334,7 +340,12 @@ input[type="text"]::placeholder { color:var(--muted); }
   <div class="secret-title">STAYS SECRET</div>
   <div class="secret-picked">the room voted to protect whoever picked <strong id="secretName"></strong></div>
   <div style="font-size:13px;color:var(--muted)">they'll never know who chose them</div>
-  <button class="btn btn-primary" id="nextRoundBtn2" style="max-width:300px">Next Round &#8594;</button>
+  <div id="nextRoundHost2" style="width:100%;max-width:300px">
+    <button class="btn btn-primary" id="nextRoundBtn2" style="width:100%">Next Round &#8594;</button>
+  </div>
+  <div id="nextRoundWait2" style="display:none;font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase">
+    <span class="waiting-anim">&#9203;</span> waiting for host...
+  </div>
 </div>
 
 <script>
@@ -600,11 +611,15 @@ function listenToRoom() {
         document.getElementById("revealQuestion").textContent = s.question || "";
         document.getElementById("revealAnswer").textContent   = s.pickedPerson || "";
         document.getElementById("revealBy").textContent       = s.pickedBy || "";
+        document.getElementById("nextRoundHost").style.display  = isHost ? "block" : "none";
+        document.getElementById("nextRoundWait").style.display  = isHost ? "none"  : "block";
         showScreen("reveal");
         break;
       case "secret":
         stopTimer();
         document.getElementById("secretName").textContent = s.pickedPerson || "";
+        document.getElementById("nextRoundHost2").style.display = isHost ? "block" : "none";
+        document.getElementById("nextRoundWait2").style.display = isHost ? "none"  : "block";
         showScreen("secret");
         break;
     }
@@ -827,8 +842,8 @@ document.getElementById("muteBtn").addEventListener("click", () => {
 
 // ─── NEXT ROUND ─────────────────────────────
 function nextRound() {
-  if (isHost) { startNewRound(); }
-  // non-hosts do nothing — Firebase state listener will push everyone to the next screen
+  if (!isHost) return;
+  startNewRound();
 }
 document.getElementById("nextRoundBtn").addEventListener("click",  nextRound);
 document.getElementById("nextRoundBtn2").addEventListener("click", nextRound);
