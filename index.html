@@ -229,9 +229,9 @@ input[type="text"]::placeholder { color:var(--muted); }
 
 <!-- PICKED -->
 <div class="screen" id="picked">
-  <div class="picked-sub">the question was asked and someone picked...</div>
+  <div class="picked-sub">someone answered the question and picked...</div>
   <div class="picked-name" id="pickedName">???</div>
-  <div class="picked-sub">do you want to know the question?</div>
+  <div class="picked-sub">do you want to know who picked them?</div>
   <div class="vote-row">
     <button class="btn btn-primary" id="voteReveal" style="flex:1">Reveal &#128064;</button>
     <button class="btn btn-outline" id="voteSecret" style="flex:1">Keep Secret &#129296;</button>
@@ -244,7 +244,8 @@ input[type="text"]::placeholder { color:var(--muted); }
   <div class="reveal-q">The question was</div>
   <div class="reveal-question" id="revealQuestion"></div>
   <div class="reveal-answer" id="revealAnswer"></div>
-  <div class="reveal-by">answered by <span id="revealBy"></span></div>
+  <div class="reveal-by">was picked by</div>
+  <div class="reveal-answer" id="revealBy" style="color:var(--yellow);animation:shake .4s ease"></div>
   <button class="btn btn-primary" id="nextRoundBtn" style="max-width:300px">Next Round &#8594;</button>
 </div>
 
@@ -252,8 +253,8 @@ input[type="text"]::placeholder { color:var(--muted); }
 <div class="screen" id="secret">
   <div class="secret-icon">&#129296;</div>
   <div class="secret-title">STAYS SECRET</div>
-  <div class="secret-picked">the room voted to protect <strong id="secretName"></strong></div>
-  <div style="font-size:13px;color:var(--muted)">they'll never know what was asked</div>
+  <div class="secret-picked">the room voted to protect whoever picked <strong id="secretName"></strong></div>
+  <div style="font-size:13px;color:var(--muted)">they'll never know who chose them</div>
   <button class="btn btn-primary" id="nextRoundBtn2" style="max-width:300px">Next Round &#8594;</button>
 </div>
 
