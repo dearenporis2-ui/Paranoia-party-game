@@ -570,8 +570,10 @@ function listenToRoom() {
     usedQs   = s.usedQs || [];
     currentQ = s.question || "";
     selectedPack = s.pack || "savage";
-    applyBg(s.bg || "");
-    applyMusic(s.music || "", s.musicLabel || "");
+    if (s.screen !== "lobby") {
+      applyBg(s.bg || "");
+      applyMusic(s.music || "", s.musicLabel || "");
+    }
 
     switch (s.screen) {
       case "lobby":
@@ -773,8 +775,7 @@ document.querySelectorAll("#bgGrid .media-opt").forEach(opt => {
     document.querySelectorAll("#bgGrid .media-opt").forEach(o => o.classList.remove("active"));
     opt.classList.add("active");
     selectedBg = opt.dataset.bg;
-    applyBg(selectedBg);
-    if (roomRef) roomRef.child("state").update({ bg: selectedBg });
+    applyBg(selectedBg); // preview for host only, syncs to all players when round starts
   });
 });
 
@@ -784,8 +785,7 @@ document.querySelectorAll("#musicGrid .media-opt").forEach(opt => {
     opt.classList.add("active");
     selectedMusic = opt.dataset.music;
     selectedMusicLabel = opt.dataset.label || "";
-    applyMusic(selectedMusic, selectedMusicLabel);
-    if (roomRef) roomRef.child("state").update({ music: selectedMusic, musicLabel: selectedMusicLabel });
+    applyMusic(selectedMusic, selectedMusicLabel); // preview for host only, syncs when round starts
   });
 });
 
@@ -828,7 +828,7 @@ document.getElementById("muteBtn").addEventListener("click", () => {
 // ─── NEXT ROUND ─────────────────────────────
 function nextRound() {
   if (isHost) { startNewRound(); }
-  else { lastScreen = ""; showScreen("lobby"); }
+  // non-hosts do nothing — Firebase state listener will push everyone to the next screen
 }
 document.getElementById("nextRoundBtn").addEventListener("click",  nextRound);
 document.getElementById("nextRoundBtn2").addEventListener("click", nextRound);
