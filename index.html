@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>PARANOIA</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #222;
+    --red: #ff2d2d;
+    --red-dim: #7a1414;
+    --white: #f0ede8;
+    --muted: #444;
+    --yellow: #ffd600;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* noise overlay */
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none;
+    z-index:999;
+    opacity:0.4;
+  }
+
+  .screen { display:none; min-height:100dvh; flex-direction:column; }
+  .screen.active { display:flex; }
+
+  /* ── LANDING ── */
+  #landing {
+    justify-content: center;
+    align-items: center;
+    padding: 40px 24px;
+    gap: 48px;
+  }
+
+  .logo-block { text-align:center; }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(72px, 20vw, 120px);
+    letter-spacing: 8px;
+    color: var(--white);
+    line-height: 1;
+    position: relative;
+    display: inline-block;
+  }
+
+  .logo::after {
+    content: 'PARANOIA';
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    color: var(--red);
+    z-index: -1;
+  }
+
+  .tagline {
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  .land-card {
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .input-group { display:flex; flex-direction:column; gap:6px; }
+
+  label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  input[type="text"] {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input[type="text"]:focus { border-color: var(--red); }
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .divider::before, .divider::after {
+    content:''; flex:1; height:1px; background:var(--border);
+  }
+
+  .btn {
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    width: 100%;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity:0.3; cursor:default; }
+
+  .btn-primary { background: var(--red); color: var(--bg); }
+  .btn-outline  { background: transparent; border: 1px solid var(--border); color: var(--white); }
+
+  .error-msg {
+    font-size: 12px;
+    color: var(--red);
+    min-height: 16px;
+    text-align: center;
+  }
+
+  /* ── LOBBY ── */
+  #lobby {
+    padding: 24px 20px;
+    gap: 24px;
+  }
+
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo-sm {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--red);
+  }
+
+  .room-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .room-pill span { color: var(--yellow); font-weight: 700; letter-spacing: 2px; }
+
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .player-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .player-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .player-chip.me { border-color: var(--red); color: var(--red); }
+
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--red); }
+
+  .host-note {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    padding: 12px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+  }
+
+  .waiting-anim {
+    display: inline-block;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── GAME ── */
+  #game {
+    padding: 24px 20px;
+    gap: 20px;
+  }
+
+  .question-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .question-card::before {
+    content:'?';
+    position:absolute;
+    right:-10px;
+    bottom:-20px;
+    font-family:'Bebas Neue',sans-serif;
+    font-size:180px;
+    color: var(--border);
+    line-height:1;
+    pointer-events:none;
+  }
+
+  .q-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--red);
+  }
+
+  .q-text {
+    font-size: clamp(20px, 5vw, 26px);
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .pick-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .pick-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pick-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .pick-btn:active, .pick-btn:hover { border-color: var(--red); color: var(--red); }
+  .pick-btn.selected { background: var(--red-dim); border-color: var(--red); color: var(--white); }
+
+  /* ── PICKED REVEAL ── */
+  #picked {
+    justify-content: center;
+    align-items: center;
+    padding: 40px 24px;
+    gap: 32px;
+    text-align: center;
+  }
+
+  .picked-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(56px, 15vw, 88px);
+    letter-spacing: 4px;
+    color: var(--red);
+    animation: shake 0.4s ease;
+  }
+
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-8px)}
+    40%{transform:translateX(8px)}
+    60%{transform:translateX(-5px)}
+    80%{transform:translateX(5px)}
+  }
+
+  .picked-sub {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .vote-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .vote-counts {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* ── REVEAL ── */
+  #reveal {
+    justify-content: center;
+    align-items: center;
+    padding: 40px 24px;
+    gap: 28px;
+    text-align: center;
+  }
+
+  .reveal-q {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .reveal-question {
+    font-size: clamp(22px, 5vw, 28px);
+    font-weight: 500;
+    line-height: 1.35;
+    max-width: 320px;
+  }
+
+  .reveal-answer {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(48px, 13vw, 72px);
+    letter-spacing: 3px;
+    color: var(--red);
+  }
+
+  .reveal-by {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .reveal-by span { color: var(--yellow); }
+
+  /* ── KEPT SECRET ── */
+  #secret {
+    justify-content: center;
+    align-items: center;
+    padding: 40px 24px;
+    gap: 24px;
+    text-align: center;
+  }
+
+  .secret-icon {
+    font-size: 64px;
+  }
+
+  .secret-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 4px;
+    color: var(--muted);
+  }
+
+  .secret-picked {
+    font-size: 15px;
+    color: var(--white);
+  }
+
+  .secret-picked strong {
+    color: var(--red);
+    font-size: 20px;
+  }
+</style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div class="screen active" id="landing">
+  <div class="logo-block">
+    <div class="logo">PARANOIA</div>
+    <div class="tagline">who did they pick? do you even wanna know.</div>
+  </div>
+  <div class="land-card">
+    <div class="input-group">
+      <label>your name</label>
+      <input type="text" id="nameInput" placeholder="enter username" maxlength="20" autocomplete="off">
+    </div>
+    <button class="btn btn-primary" id="createBtn" disabled>Create Room</button>
+    <div class="divider">or</div>
+    <div class="input-group">
+      <label>room code</label>
+      <input type="text" id="codeInput" placeholder="4-digit code" maxlength="4" inputmode="numeric" autocomplete="off">
+    </div>
+    <button class="btn btn-outline" id="joinBtn" disabled>Join Room</button>
+    <div class="error-msg" id="landError"></div>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div class="screen" id="lobby">
+  <div class="top-bar">
+    <div class="logo-sm">PARANOIA</div>
+    <div class="room-pill">Code: <span id="lobbyCode">----</span></div>
+  </div>
+  <div>
+    <div class="section-title">Players in room</div>
+    <div class="player-grid" id="playerGrid"></div>
+  </div>
+  <div class="host-note" id="hostNote">
+    <span class="waiting-anim">⏳</span> waiting for players to join...
+  </div>
+  <button class="btn btn-primary" id="startBtn" style="display:none">Start Game</button>
+</div>
+
+<!-- GAME: QUESTION + PICK -->
+<div class="screen" id="game">
+  <div class="top-bar">
+    <div class="logo-sm">PARANOIA</div>
+    <div class="room-pill">Code: <span id="gameCode">----</span></div>
+  </div>
+  <div class="question-card">
+    <div class="q-label">The Question</div>
+    <div class="q-text" id="questionText">Loading...</div>
+  </div>
+  <div>
+    <div class="pick-label">Pick someone</div>
+    <div class="pick-grid" id="pickGrid"></div>
+  </div>
+</div>
+
+<!-- PICKED REVEAL: vote to reveal or keep secret -->
+<div class="screen" id="picked">
+  <div class="picked-sub">the question was asked and someone picked...</div>
+  <div class="picked-name" id="pickedName">???</div>
+  <div class="picked-sub">do you want to know the question?</div>
+  <div class="vote-row">
+    <button class="btn btn-primary" id="voteReveal" style="flex:1">Reveal 👀</button>
+    <button class="btn btn-outline" id="voteSecret" style="flex:1">Keep Secret 🤐</button>
+  </div>
+  <div class="vote-counts" id="voteCounts"></div>
+</div>
+
+<!-- REVEAL -->
+<div class="screen" id="reveal">
+  <div class="reveal-q">The question was</div>
+  <div class="reveal-question" id="revealQuestion"></div>
+  <div class="reveal-answer" id="revealAnswer"></div>
+  <div class="reveal-by">answered by <span id="revealBy"></span></div>
+  <button class="btn btn-primary" id="nextRoundBtn" style="max-width:300px">Next Round →</button>
+</div>
+
+<!-- SECRET -->
+<div class="screen" id="secret">
+  <div class="secret-icon">🤐</div>
+  <div class="secret-title">STAYS SECRET</div>
+  <div class="secret-picked">the room voted to protect <strong id="secretName"></strong></div>
+  <div style="font-size:13px;color:var(--muted)">they'll never know what was asked</div>
+  <button class="btn btn-primary" id="nextRoundBtn2" style="max-width:300px">Next Round →</button>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// QUESTIONS BANK
+// ─────────────────────────────────────────────
+const QUESTIONS = [
+  "who would sell everyone out to save themselves?",
+  "who talks the most behind people's backs?",
+  "who has the worst taste in music?",
+  "who would survive the least amount of time in prison?",
+  "who lies the most convincingly?",
+  "who is secretly the most broke?",
+  "who would ghost their best friend for a relationship?",
+  "who do you trust the least in this room?",
+  "who has said something terrible and got away with it?",
+  "who would cry first if things got tough?",
+  "who is most likely to end up on the news?",
+  "who is the biggest attention seeker?",
+  "who would steal from a friend if they thought they wouldn't get caught?",
+  "who needs to be told the truth about themselves?",
+  "who secretly thinks they're better than everyone here?",
+  "who would be the first to join a cult?",
+  "who is most likely to go broke trying to look rich?",
+  "who talks the most but says the least?",
+  "who do you think secretly hates someone in this room?",
+  "who would throw someone under the bus to avoid trouble?",
+  "who is the messiest person you know?",
+  "who is most likely to have a villain arc?",
+  "who would last the longest without their phone?",
+  "who do you think is faking their personality?",
+  "who is most likely to get kicked out of their own party?",
+  "who has the most questionable search history?",
+  "who would be the worst to be stuck with on a desert island?",
+  "who is most likely to accidentally expose a group secret?",
+  "who do you think is the most emotionally unavailable?",
+  "who would date someone just for clout?",
+  "who is most likely to become a conspiracy theorist?",
+  "who is most likely to have an enemy they haven't told anyone about?",
+  "who has the worst takes on everything?",
+  "who is the most likely to snap one day?",
+  "who do you trust the most in this room?",
+  "who is the funniest when they're not trying to be?",
+  "who would be the best to call at 3am?",
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let myName    = "";
+let myRoom    = "";
+let isHost    = false;
+let players   = [];  // [{name}]
+let usedQs    = [];
+let currentQ  = "";
+let pickedPerson = "";
+let pickedBy  = "";
+let votes     = { reveal: [], secret: [] };
+let ws        = null;
+let pingTimer = null;
+
+// ─────────────────────────────────────────────
+// SCREEN HELPERS
+// ─────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ─────────────────────────────────────────────
+// LANDING LOGIC
+// ─────────────────────────────────────────────
+const nameInput  = document.getElementById("nameInput");
+const codeInput  = document.getElementById("codeInput");
+const createBtn  = document.getElementById("createBtn");
+const joinBtn    = document.getElementById("joinBtn");
+const landError  = document.getElementById("landError");
+
+nameInput.addEventListener("input", () => {
+  const hasName = nameInput.value.trim().length > 0;
+  createBtn.disabled = !hasName;
+  joinBtn.disabled   = !(hasName && codeInput.value.trim().length === 4);
+});
+
+codeInput.addEventListener("input", () => {
+  codeInput.value = codeInput.value.replace(/\D/g, "").slice(0, 4);
+  joinBtn.disabled = !(nameInput.value.trim().length > 0 && codeInput.value.length === 4);
+});
+
+createBtn.addEventListener("click", () => {
+  const name = nameInput.value.trim();
+  if (!name) return;
+  myName = name;
+  myRoom = Math.floor(1000 + Math.random() * 9000).toString();
+  isHost = true;
+  connectWS(() => {
+    send({ type: "join", name: myName, room: myRoom });
+  });
+});
+
+joinBtn.addEventListener("click", () => {
+  const name = nameInput.value.trim();
+  const code = codeInput.value.trim();
+  if (!name || code.length !== 4) return;
+  myName = name;
+  myRoom = code;
+  isHost = false;
+  connectWS(() => {
+    send({ type: "join", name: myName, room: myRoom });
+  });
+});
+
+// ─────────────────────────────────────────────
+// WEBSOCKET — Ably raw protocol
+// ─────────────────────────────────────────────
+const ABLY_KEY = "HtCWNA.nyttHg:Zq7f8ZfaTm-7zrzR_CoqWKPVIRiBNb43r2h6nE1IObo";
+const ABLY_CH  = () => `paranoia-${myRoom}`;
+
+function connectWS(onReady) {
+  if (ws) { try { ws.close(); } catch(e){} }
+  ws = new WebSocket(`wss://realtime.ably.io/?key=${ABLY_KEY}&format=json&heartbeats=true&v=3`);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ action: 10, channel: ABLY_CH() }));
+    pingTimer = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ action: 0 }));
+    }, 15000);
+  };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.action === 11) { onReady(); return; } // ATTACHED
+    if (msg.action === 15 && msg.channel === ABLY_CH()) {
+      (msg.messages || []).forEach(m => {
+        let d; try { d = typeof m.data === "string" ? JSON.parse(m.data) : m.data; } catch(e){ return; }
+        handleMsg(d);
+      });
+    }
+  };
+
+  ws.onerror = () => { landError.textContent = "Connection error. Try again."; };
+}
+
+function send(data) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({
+    action: 15,
+    channel: ABLY_CH(),
+    messages: [{ name: "ev", data: JSON.stringify(data) }]
+  }));
+}
+
+// ─────────────────────────────────────────────
+// MESSAGE HANDLER
+// ─────────────────────────────────────────────
+function handleMsg(d) {
+  switch(d.type) {
+
+    case "join":
+      if (!players.find(p => p.name === d.name)) players.push({ name: d.name });
+      renderLobby();
+      // If I'm host, broadcast full player list so new joiners are in sync
+      if (isHost) send({ type: "sync", players: players.map(p => p.name) });
+      break;
+
+    case "sync":
+      players = d.players.map(n => ({ name: n }));
+      renderLobby();
+      break;
+
+    case "start":
+      currentQ    = d.question;
+      usedQs      = d.usedQs;
+      pickedPerson = "";
+      pickedBy    = "";
+      votes       = { reveal: [], secret: [] };
+      renderGame();
+      showScreen("game");
+      break;
+
+    case "picked":
+      pickedPerson = d.picked;
+      pickedBy    = d.by;
+      votes       = { reveal: [], secret: [] };
+      renderPicked();
+      showScreen("picked");
+      break;
+
+    case "vote":
+      if (!votes[d.choice].includes(d.name)) votes[d.choice].push(d.name);
+      updateVoteCounts();
+      // Check if everyone voted
+      if (votes.reveal.length + votes.secret.length >= players.length) {
+        resolveVote();
+      }
+      break;
+
+    case "reveal":
+      document.getElementById("revealQuestion").textContent = d.question;
+      document.getElementById("revealAnswer").textContent   = d.picked;
+      document.getElementById("revealBy").textContent       = d.by;
+      showScreen("reveal");
+      break;
+
+    case "secret":
+      document.getElementById("secretName").textContent = d.picked;
+      showScreen("secret");
+      break;
+  }
+}
+
+// ─────────────────────────────────────────────
+// LOBBY
+// ─────────────────────────────────────────────
+function renderLobby() {
+  document.getElementById("lobbyCode").textContent = myRoom;
+  document.getElementById("gameCode").textContent  = myRoom;
+
+  const grid = document.getElementById("playerGrid");
+  grid.innerHTML = players.map(p =>
+    `<div class="player-chip ${p.name === myName ? 'me' : ''}">
+      <div class="dot"></div>${p.name}${p.name === myName ? ' (you)' : ''}
+    </div>`
+  ).join("");
+
+  const startBtn = document.getElementById("startBtn");
+  const hostNote = document.getElementById("hostNote");
+
+  if (isHost) {
+    hostNote.style.display = "none";
+    startBtn.style.display = "block";
+    startBtn.disabled      = players.length < 2;
+    startBtn.textContent   = players.length < 2
+      ? "Need at least 2 players"
+      : `Start Game (${players.length} players)`;
+  }
+
+  showScreen("lobby");
+}
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  if (!isHost || players.length < 2) return;
+  const available = QUESTIONS.filter(q => !usedQs.includes(q));
+  if (available.length === 0) { usedQs = []; }
+  const q = available[Math.floor(Math.random() * available.length)];
+  usedQs.push(q);
+  send({ type: "start", question: q, usedQs });
+});
+
+// ─────────────────────────────────────────────
+// GAME
+// ─────────────────────────────────────────────
+function renderGame() {
+  document.getElementById("questionText").textContent = currentQ;
+  const grid = document.getElementById("pickGrid");
+  const others = players.filter(p => p.name !== myName);
+  grid.innerHTML = others.map(p =>
+    `<button class="pick-btn" onclick="pickPlayer('${p.name}')">${p.name}</button>`
+  ).join("");
+}
+
+function pickPlayer(name) {
+  // Only the person who answers sends the picked message
+  document.querySelectorAll(".pick-btn").forEach(b => b.classList.remove("selected"));
+  document.querySelectorAll(".pick-btn").forEach(b => {
+    if (b.textContent === name) b.classList.add("selected");
+  });
+  setTimeout(() => {
+    send({ type: "picked", picked: name, by: myName });
+  }, 300);
+}
+
+// ─────────────────────────────────────────────
+// PICKED SCREEN
+// ─────────────────────────────────────────────
+function renderPicked() {
+  document.getElementById("pickedName").textContent = pickedPerson;
+  document.getElementById("voteCounts").textContent = "";
+  document.getElementById("voteReveal").disabled = false;
+  document.getElementById("voteSecret").disabled = false;
+}
+
+document.getElementById("voteReveal").addEventListener("click", () => {
+  document.getElementById("voteReveal").disabled = true;
+  document.getElementById("voteSecret").disabled = true;
+  send({ type: "vote", choice: "reveal", name: myName });
+});
+
+document.getElementById("voteSecret").addEventListener("click", () => {
+  document.getElementById("voteReveal").disabled = true;
+  document.getElementById("voteSecret").disabled = true;
+  send({ type: "vote", choice: "secret", name: myName });
+});
+
+function updateVoteCounts() {
+  const total = players.length;
+  const done  = votes.reveal.length + votes.secret.length;
+  document.getElementById("voteCounts").textContent =
+    `${done}/${total} voted · ${votes.reveal.length} reveal · ${votes.secret.length} secret`;
+}
+
+function resolveVote() {
+  if (votes.reveal.length >= votes.secret.length) {
+    send({ type: "reveal", question: currentQ, picked: pickedPerson, by: pickedBy });
+  } else {
+    send({ type: "secret", picked: pickedPerson });
+  }
+}
+
+// ─────────────────────────────────────────────
+// NEXT ROUND
+// ─────────────────────────────────────────────
+function nextRound() {
+  if (!isHost) { showScreen("lobby"); renderLobby(); return; }
+  const available = QUESTIONS.filter(q => !usedQs.includes(q));
+  if (available.length === 0) { usedQs = []; }
+  const q = available[Math.floor(Math.random() * available.length)];
+  usedQs.push(q);
+  send({ type: "start", question: q, usedQs });
+}
+
+document.getElementById("nextRoundBtn").addEventListener("click",  nextRound);
+document.getElementById("nextRoundBtn2").addEventListener("click", nextRound);
+</script>
+</body>
+</html>
