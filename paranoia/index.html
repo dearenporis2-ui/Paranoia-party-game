@@ -593,6 +593,7 @@ function listenToRoom() {
         break;
       case "game":
         hasVoted = false; hasPicked = false;
+        lastScreen = ""; // force re-render even if already on game screen
         renderGame();
         showScreen("game");
         startTimer(s.timerEnd || 0);
