@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>PARANOIA</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
 <style>
   :root {
     --bg: #0a0a0a;
@@ -147,10 +151,7 @@
   }
 
   /* ── LOBBY ── */
-  #lobby {
-    padding: 24px 20px;
-    gap: 24px;
-  }
+  #lobby { padding: 24px 20px; gap: 24px; }
 
   .top-bar {
     display: flex;
@@ -183,11 +184,7 @@
     margin-bottom: 12px;
   }
 
-  .player-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
+  .player-grid { display:flex; flex-wrap:wrap; gap:8px; }
 
   .player-chip {
     background: var(--surface);
@@ -199,7 +196,6 @@
     align-items: center;
     gap: 6px;
   }
-
   .player-chip.me { border-color: var(--red); color: var(--red); }
 
   .dot { width:6px; height:6px; border-radius:50%; background:var(--red); }
@@ -213,17 +209,11 @@
     border-radius: 8px;
   }
 
-  .waiting-anim {
-    display: inline-block;
-    animation: pulse 1.5s ease-in-out infinite;
-  }
+  .waiting-anim { display:inline-block; animation:pulse 1.5s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
   /* ── GAME ── */
-  #game {
-    padding: 24px 20px;
-    gap: 20px;
-  }
+  #game { padding: 24px 20px; gap: 20px; }
 
   .question-card {
     flex: 1;
@@ -242,8 +232,7 @@
   .question-card::before {
     content:'?';
     position:absolute;
-    right:-10px;
-    bottom:-20px;
+    right:-10px; bottom:-20px;
     font-family:'Bebas Neue',sans-serif;
     font-size:180px;
     color: var(--border);
@@ -251,32 +240,11 @@
     pointer-events:none;
   }
 
-  .q-label {
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--red);
-  }
+  .q-label { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--red); }
+  .q-text { font-size:clamp(20px,5vw,26px); font-weight:500; line-height:1.3; }
 
-  .q-text {
-    font-size: clamp(20px, 5vw, 26px);
-    font-weight: 500;
-    line-height: 1.3;
-  }
-
-  .pick-label {
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 8px;
-  }
-
-  .pick-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+  .pick-label { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .pick-grid { display:flex; flex-direction:column; gap:8px; }
 
   .pick-btn {
     background: var(--surface);
@@ -291,22 +259,15 @@
     cursor: pointer;
     transition: all 0.15s;
   }
+  .pick-btn:active, .pick-btn:hover { border-color:var(--red); color:var(--red); }
+  .pick-btn.selected { background:var(--red-dim); border-color:var(--red); color:var(--white); }
 
-  .pick-btn:active, .pick-btn:hover { border-color: var(--red); color: var(--red); }
-  .pick-btn.selected { background: var(--red-dim); border-color: var(--red); color: var(--white); }
-
-  /* ── PICKED REVEAL ── */
-  #picked {
-    justify-content: center;
-    align-items: center;
-    padding: 40px 24px;
-    gap: 32px;
-    text-align: center;
-  }
+  /* ── PICKED ── */
+  #picked { justify-content:center; align-items:center; padding:40px 24px; gap:32px; text-align:center; }
 
   .picked-name {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(56px, 15vw, 88px);
+    font-size: clamp(56px,15vw,88px);
     letter-spacing: 4px;
     color: var(--red);
     animation: shake 0.4s ease;
@@ -320,83 +281,26 @@
     80%{transform:translateX(5px)}
   }
 
-  .picked-sub {
-    font-size: 13px;
-    color: var(--muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
+  .picked-sub { font-size:13px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; }
 
-  .vote-row {
-    display: flex;
-    gap: 12px;
-    width: 100%;
-    max-width: 340px;
-  }
-
-  .vote-counts {
-    font-size: 12px;
-    color: var(--muted);
-    text-align: center;
-  }
+  .vote-row { display:flex; gap:12px; width:100%; max-width:340px; }
+  .vote-counts { font-size:12px; color:var(--muted); text-align:center; }
 
   /* ── REVEAL ── */
-  #reveal {
-    justify-content: center;
-    align-items: center;
-    padding: 40px 24px;
-    gap: 28px;
-    text-align: center;
-  }
+  #reveal { justify-content:center; align-items:center; padding:40px 24px; gap:28px; text-align:center; }
 
-  .reveal-q {
-    font-size: 13px;
-    color: var(--muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
+  .reveal-q { font-size:13px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; }
+  .reveal-question { font-size:clamp(22px,5vw,28px); font-weight:500; line-height:1.35; max-width:320px; }
+  .reveal-answer { font-family:'Bebas Neue',sans-serif; font-size:clamp(48px,13vw,72px); letter-spacing:3px; color:var(--red); }
+  .reveal-by { font-size:12px; color:var(--muted); }
+  .reveal-by span { color:var(--yellow); }
 
-  .reveal-question {
-    font-size: clamp(22px, 5vw, 28px);
-    font-weight: 500;
-    line-height: 1.35;
-    max-width: 320px;
-  }
-
-  .reveal-answer {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(48px, 13vw, 72px);
-    letter-spacing: 3px;
-    color: var(--red);
-  }
-
-  .reveal-by {
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  .reveal-by span { color: var(--yellow); }
-
-  /* ── KEPT SECRET ── */
-  #secret {
-    justify-content: center;
-    align-items: center;
-    padding: 40px 24px;
-    gap: 24px;
-    text-align: center;
-  }
-
-  .secret-icon { font-size: 64px; }
-
-  .secret-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 52px;
-    letter-spacing: 4px;
-    color: var(--muted);
-  }
-
-  .secret-picked { font-size: 15px; color: var(--white); }
-  .secret-picked strong { color: var(--red); font-size: 20px; }
+  /* ── SECRET ── */
+  #secret { justify-content:center; align-items:center; padding:40px 24px; gap:24px; text-align:center; }
+  .secret-icon { font-size:64px; }
+  .secret-title { font-family:'Bebas Neue',sans-serif; font-size:52px; letter-spacing:4px; color:var(--muted); }
+  .secret-picked { font-size:15px; color:var(--white); }
+  .secret-picked strong { color:var(--red); font-size:20px; }
 </style>
 </head>
 <body>
@@ -439,7 +343,7 @@
   <button class="btn btn-primary" id="startBtn" style="display:none">Start Game</button>
 </div>
 
-<!-- GAME: QUESTION + PICK -->
+<!-- GAME -->
 <div class="screen" id="game">
   <div class="top-bar">
     <div class="logo-sm">PARANOIA</div>
@@ -455,7 +359,7 @@
   </div>
 </div>
 
-<!-- PICKED REVEAL: vote to reveal or keep secret -->
+<!-- PICKED -->
 <div class="screen" id="picked">
   <div class="picked-sub">the question was asked and someone picked...</div>
   <div class="picked-name" id="pickedName">???</div>
@@ -487,7 +391,23 @@
 
 <script>
 // ─────────────────────────────────────────────
-// QUESTIONS BANK
+// FIREBASE
+// ─────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDUdA8_MQrSALazFXvTjx-MXVKTWLUPqak",
+  authDomain: "paranoia-party-game.firebaseapp.com",
+  databaseURL: "https://paranoia-party-game-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "paranoia-party-game",
+  storageBucket: "paranoia-party-game.firebasestorage.app",
+  messagingSenderId: "761776616238",
+  appId: "1:761776616238:web:bcc38d0bba28dcab8540bf"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ─────────────────────────────────────────────
+// QUESTIONS
 // ─────────────────────────────────────────────
 const QUESTIONS = [
   "who would sell everyone out to save themselves?",
@@ -533,42 +453,47 @@ const QUESTIONS = [
 // ─────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────
-let myName       = "";
-let myRoom       = "";
-let isHost       = false;
-let players      = [];   // [{name, peerId}]  — host tracks all
-let usedQs       = [];
-let currentQ     = "";
-let pickedPerson = "";
-let pickedBy     = "";
-let votes        = { reveal: [], secret: [] };
-
-// PeerJS objects
-let myPeer       = null;  // our Peer instance
-let hostConn     = null;  // non-hosts: single DataConnection to host
-let guestConns   = {};    // host: map peerId → DataConnection
+let myName      = "";
+let myRoom      = "";
+let isHost      = false;
+let players     = {};   // { safeKey: displayName }
+let usedQs      = [];
+let currentQ    = "";
+let roomRef     = null;
+let myPlayerRef = null;
+let hasVoted    = false;
+let lastScreen  = "";
 
 // ─────────────────────────────────────────────
-// SCREEN HELPERS
+// HELPERS
 // ─────────────────────────────────────────────
 function showScreen(id) {
+  if (lastScreen === id) return; // avoid re-triggering animations
+  lastScreen = id;
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 }
 
+function safeKey(name) {
+  return name.replace(/[.#$\/\[\]\s]/g, "_");
+}
+
+function setError(msg) {
+  document.getElementById("landError").textContent = msg;
+}
+
 // ─────────────────────────────────────────────
-// LANDING UI
+// LANDING
 // ─────────────────────────────────────────────
 const nameInput = document.getElementById("nameInput");
 const codeInput = document.getElementById("codeInput");
 const createBtn = document.getElementById("createBtn");
 const joinBtn   = document.getElementById("joinBtn");
-const landError = document.getElementById("landError");
 
 nameInput.addEventListener("input", () => {
-  const hasName = nameInput.value.trim().length > 0;
-  createBtn.disabled = !hasName;
-  joinBtn.disabled   = !(hasName && codeInput.value.trim().length === 4);
+  const ok = nameInput.value.trim().length > 0;
+  createBtn.disabled = !ok;
+  joinBtn.disabled   = !(ok && codeInput.value.trim().length === 4);
 });
 
 codeInput.addEventListener("input", () => {
@@ -576,381 +501,253 @@ codeInput.addEventListener("input", () => {
   joinBtn.disabled = !(nameInput.value.trim().length > 0 && codeInput.value.length === 4);
 });
 
-// ─────────────────────────────────────────────
-// PEERJS NETWORKING
-// Room code = last 4 digits of host's peer ID
-// Host peer ID = "paranoia-XXXX-<random>"
-// Guests connect to that peer ID via the room code.
-// ─────────────────────────────────────────────
-
-function peerIdForRoom(code) {
-  // We store the host's full peer id in a global when hosting,
-  // and guests discover it by connecting to "paranoia-XXXX" directly.
-  // Simple approach: host peer ID IS "paranoia-XXXX".
-  return "paranoia-room-" + code;
-}
-
-// HOST: create a Peer with a fixed ID derived from the room code
-function hostRoom(name, code) {
-  myName = name;
-  myRoom = code;
-  isHost = true;
-  landError.textContent = "";
-  createBtn.disabled = true;
-  createBtn.textContent = "Connecting...";
-
-  const peerId = peerIdForRoom(code);
-  myPeer = new Peer(peerId);
-
-  myPeer.on("open", (id) => {
-    // Add ourselves to the player list
-    players = [{ name: myName, peerId: id }];
-    renderLobby();
-  });
-
-  myPeer.on("connection", (conn) => {
-    conn.on("open", () => {
-      guestConns[conn.peer] = conn;
-      conn.on("data", (data) => handleMsg(data, conn.peer));
-      conn.on("close", () => {
-        // Remove disconnected player
-        players = players.filter(p => p.peerId !== conn.peer);
-        delete guestConns[conn.peer];
-        broadcast({ type: "sync", players: players.map(p => ({ name: p.name, peerId: p.peerId })) });
-        renderLobby();
-      });
-    });
-  });
-
-  myPeer.on("error", (err) => {
-    landError.textContent = err.type === "unavailable-id"
-      ? "Room code taken. Try a different one."
-      : "Connection error: " + err.message;
-    createBtn.disabled = false;
-    createBtn.textContent = "Create Room";
-  });
-}
-
-// GUEST: connect to the host's peer
-function joinRoom(name, code) {
-  myName = name;
-  myRoom = code;
-  isHost = false;
-  landError.textContent = "";
-  joinBtn.disabled = true;
-  joinBtn.textContent = "Connecting...";
-
-  myPeer = new Peer(); // random peer ID for guests
-
-  myPeer.on("open", () => {
-    const hostPeerId = peerIdForRoom(code);
-    hostConn = myPeer.connect(hostPeerId, { reliable: true });
-
-    hostConn.on("open", () => {
-      // Tell host who we are
-      hostConn.send({ type: "join", name: myName });
-    });
-
-    hostConn.on("data", (data) => handleMsg(data, null));
-
-    hostConn.on("close", () => {
-      landError.textContent = "Disconnected from host.";
-      showScreen("landing");
-      joinBtn.disabled = false;
-      joinBtn.textContent = "Join Room";
-    });
-
-    hostConn.on("error", () => {
-      landError.textContent = "Could not connect. Check the room code.";
-      joinBtn.disabled = false;
-      joinBtn.textContent = "Join Room";
-    });
-  });
-
-  myPeer.on("error", (err) => {
-    if (err.type === "peer-unavailable") {
-      landError.textContent = "Room not found. Check the code.";
-    } else {
-      landError.textContent = "Connection error: " + err.message;
-    }
-    joinBtn.disabled = false;
-    joinBtn.textContent = "Join Room";
-  });
-}
-
-// HOST: send to all guests
-function broadcast(data) {
-  Object.values(guestConns).forEach(conn => {
-    if (conn.open) conn.send(data);
-  });
-}
-
-// HOST: send to one guest by peerId
-function sendTo(peerId, data) {
-  const conn = guestConns[peerId];
-  if (conn && conn.open) conn.send(data);
-}
-
-// GUEST: send to host
-function sendToHost(data) {
-  if (hostConn && hostConn.open) hostConn.send(data);
-}
-
-// Anyone: send a game message appropriately
-function send(data) {
-  if (isHost) {
-    // Host handles its own messages directly, then relays to guests
-    handleMsg(data, null);
-    broadcast(data);
-  } else {
-    sendToHost(data);
-  }
-}
-
-// ─────────────────────────────────────────────
-// BUTTON WIRING
-// ─────────────────────────────────────────────
-createBtn.addEventListener("click", () => {
+createBtn.addEventListener("click", async () => {
   const name = nameInput.value.trim();
   if (!name) return;
-  const code = Math.floor(1000 + Math.random() * 9000).toString();
-  hostRoom(name, code);
+  createBtn.disabled = true;
+  createBtn.textContent = "Creating...";
+  setError("");
+
+  myName = name;
+  myRoom = Math.floor(1000 + Math.random() * 9000).toString();
+  isHost = true;
+  roomRef = db.ref("rooms/" + myRoom);
+
+  try {
+    await roomRef.set({
+      state: { screen: "lobby", question: "", pickedPerson: "", pickedBy: "", usedQs: [] },
+      votes: { voterIds: {} },
+      players: {}
+    });
+    await addMeToRoom();
+    listenToRoom();
+  } catch(e) {
+    setError("Firebase error: " + e.message);
+    createBtn.disabled = false;
+  }
+  createBtn.textContent = "Create Room";
 });
 
-joinBtn.addEventListener("click", () => {
+joinBtn.addEventListener("click", async () => {
   const name = nameInput.value.trim();
   const code = codeInput.value.trim();
   if (!name || code.length !== 4) return;
-  joinRoom(name, code);
+  joinBtn.disabled = true;
+  joinBtn.textContent = "Joining...";
+  setError("");
+
+  try {
+    const snap = await db.ref("rooms/" + code).once("value");
+    if (!snap.exists()) {
+      setError("Room not found. Check the code.");
+      joinBtn.disabled = false;
+      joinBtn.textContent = "Join Room";
+      return;
+    }
+    myName  = name;
+    myRoom  = code;
+    isHost  = false;
+    roomRef = db.ref("rooms/" + code);
+    await addMeToRoom();
+    listenToRoom();
+  } catch(e) {
+    setError("Firebase error: " + e.message);
+    joinBtn.disabled = false;
+    joinBtn.textContent = "Join Room";
+  }
 });
 
-// ─────────────────────────────────────────────
-// MESSAGE HANDLER
-// ─────────────────────────────────────────────
-function handleMsg(d, fromPeerId) {
-  switch(d.type) {
+async function addMeToRoom() {
+  const key = safeKey(myName);
+  myPlayerRef = roomRef.child("players/" + key);
+  await myPlayerRef.set(myName);
+  myPlayerRef.onDisconnect().remove();
+}
 
-    case "join":
-      // Only host receives join; relay sync to everyone
-      if (isHost) {
-        if (!players.find(p => p.name === d.name)) {
-          players.push({ name: d.name, peerId: fromPeerId });
-        }
-        // Send the new joiner the full sync
-        sendTo(fromPeerId, {
-          type: "sync",
-          players: players.map(p => ({ name: p.name, peerId: p.peerId }))
-        });
-        // Broadcast update to everyone else
-        broadcast({
-          type: "sync",
-          players: players.map(p => ({ name: p.name, peerId: p.peerId }))
-        });
+// ─────────────────────────────────────────────
+// LISTENERS
+// ─────────────────────────────────────────────
+function listenToRoom() {
+  document.getElementById("lobbyCode").textContent = myRoom;
+  document.getElementById("gameCode").textContent  = myRoom;
+
+  // Players
+  roomRef.child("players").on("value", snap => {
+    players = snap.val() || {};
+    renderPlayerGrid();
+    updateStartBtn();
+  });
+
+  // State drives all screen transitions
+  roomRef.child("state").on("value", snap => {
+    const s = snap.val();
+    if (!s) return;
+    usedQs   = s.usedQs || [];
+    currentQ = s.question || "";
+
+    switch (s.screen) {
+      case "lobby":
         renderLobby();
-      }
-      break;
-
-    case "sync":
-      players = d.players;
-      renderLobby();
-      break;
-
-    case "start":
-      currentQ     = d.question;
-      usedQs       = d.usedQs;
-      pickedPerson = "";
-      pickedBy     = "";
-      votes        = { reveal: [], secret: [] };
-      renderGame();
-      showScreen("game");
-      break;
-
-    case "picked":
-      // Only host relays picked to everyone (guests send to host first)
-      if (isHost && fromPeerId !== null) {
-        // Relay to all guests
-        broadcast({ type: "picked", picked: d.picked, by: d.by });
-        // Handle locally too
-        pickedPerson = d.picked;
-        pickedBy     = d.by;
-        votes        = { reveal: [], secret: [] };
-        renderPicked();
+        break;
+      case "game":
+        hasVoted = false;
+        renderGame();
+        showScreen("game");
+        break;
+      case "picked":
+        hasVoted = false;
+        document.getElementById("pickedName").textContent = s.pickedPerson || "???";
+        document.getElementById("voteReveal").disabled = false;
+        document.getElementById("voteSecret").disabled = false;
+        document.getElementById("voteCounts").textContent = "";
         showScreen("picked");
-      } else if (!isHost) {
-        // Received from host's broadcast
-        pickedPerson = d.picked;
-        pickedBy     = d.by;
-        votes        = { reveal: [], secret: [] };
-        renderPicked();
-        showScreen("picked");
-      }
-      break;
+        break;
+      case "reveal":
+        document.getElementById("revealQuestion").textContent = s.question || "";
+        document.getElementById("revealAnswer").textContent   = s.pickedPerson || "";
+        document.getElementById("revealBy").textContent       = s.pickedBy || "";
+        showScreen("reveal");
+        break;
+      case "secret":
+        document.getElementById("secretName").textContent = s.pickedPerson || "";
+        showScreen("secret");
+        break;
+    }
+  });
 
-    case "vote":
-      if (isHost) {
-        // Collect all votes centrally, then relay the running tally
-        if (!votes[d.choice].includes(d.name)) votes[d.choice].push(d.name);
-        const tally = { type: "tally", reveal: votes.reveal.length, secret: votes.secret.length, total: players.length };
-        broadcast(tally);
-        updateVoteCountsRaw(votes.reveal.length, votes.secret.length, players.length);
-        if (votes.reveal.length + votes.secret.length >= players.length) {
-          resolveVote();
-        }
-      } else {
-        sendToHost(d);
-      }
-      break;
+  // Votes — show live tally
+  roomRef.child("votes").on("value", snap => {
+    const v = snap.val() || {};
+    const voterIds = v.voterIds || {};
+    const reveal = Object.values(voterIds).filter(x => x === "reveal").length;
+    const secret = Object.values(voterIds).filter(x => x === "secret").length;
+    const total  = Object.keys(players).length;
+    const done   = reveal + secret;
 
-    case "tally":
-      updateVoteCountsRaw(d.reveal, d.secret, d.total);
-      break;
+    if (done > 0) {
+      document.getElementById("voteCounts").textContent =
+        `${done}/${total} voted · ${reveal} reveal · ${secret} secret`;
+    }
 
-    case "reveal":
-      document.getElementById("revealQuestion").textContent = d.question;
-      document.getElementById("revealAnswer").textContent   = d.picked;
-      document.getElementById("revealBy").textContent       = d.by;
-      showScreen("reveal");
-      break;
-
-    case "secret":
-      document.getElementById("secretName").textContent = d.picked;
-      showScreen("secret");
-      break;
-  }
+    // Host resolves when everyone voted
+    if (isHost && total > 0 && done >= total) {
+      resolveVote(reveal, secret);
+    }
+  });
 }
 
 // ─────────────────────────────────────────────
 // LOBBY
 // ─────────────────────────────────────────────
 function renderLobby() {
-  document.getElementById("lobbyCode").textContent = myRoom;
-  document.getElementById("gameCode").textContent  = myRoom;
-
-  const grid = document.getElementById("playerGrid");
-  grid.innerHTML = players.map(p =>
-    `<div class="player-chip ${p.name === myName ? 'me' : ''}">
-      <div class="dot"></div>${p.name}${p.name === myName ? ' (you)' : ''}
-    </div>`
-  ).join("");
-
-  const startBtn = document.getElementById("startBtn");
   const hostNote = document.getElementById("hostNote");
-
-  if (isHost) {
-    hostNote.style.display = "none";
-    startBtn.style.display = "block";
-    startBtn.disabled      = players.length < 2;
-    startBtn.textContent   = players.length < 2
-      ? "Need at least 2 players"
-      : `Start Game (${players.length} players)`;
-  }
-
+  const startBtn = document.getElementById("startBtn");
+  hostNote.style.display = isHost ? "none"  : "block";
+  startBtn.style.display = isHost ? "block" : "none";
   showScreen("lobby");
 }
 
+function renderPlayerGrid() {
+  const grid = document.getElementById("playerGrid");
+  grid.innerHTML = Object.values(players).map(name =>
+    `<div class="player-chip ${name === myName ? 'me' : ''}">
+      <div class="dot"></div>${name}${name === myName ? ' (you)' : ''}
+    </div>`
+  ).join("");
+}
+
+function updateStartBtn() {
+  if (!isHost) return;
+  const count = Object.keys(players).length;
+  const btn = document.getElementById("startBtn");
+  btn.disabled    = count < 2;
+  btn.textContent = count < 2 ? "Need at least 2 players" : `Start Game (${count} players)`;
+}
+
 document.getElementById("startBtn").addEventListener("click", () => {
-  if (!isHost || players.length < 2) return;
+  if (!isHost) return;
+  startNewRound();
+});
+
+function startNewRound() {
   const available = QUESTIONS.filter(q => !usedQs.includes(q));
   const pool = available.length === 0 ? QUESTIONS : available;
   const q = pool[Math.floor(Math.random() * pool.length)];
-  usedQs = [...usedQs.filter(x => x !== q), q];
-  // Host broadcasts start (handleMsg will pick it up too)
-  const msg = { type: "start", question: q, usedQs };
-  handleMsg(msg, null);
-  broadcast(msg);
-});
+
+  roomRef.child("state").update({
+    screen: "game",
+    question: q,
+    usedQs: [...usedQs, q],
+    pickedPerson: "",
+    pickedBy: ""
+  });
+  roomRef.child("votes").set({ voterIds: {} });
+}
 
 // ─────────────────────────────────────────────
 // GAME
 // ─────────────────────────────────────────────
 function renderGame() {
   document.getElementById("questionText").textContent = currentQ;
-  const grid = document.getElementById("pickGrid");
-  const others = players.filter(p => p.name !== myName);
-  grid.innerHTML = others.map(p =>
-    `<button class="pick-btn" onclick="pickPlayer('${p.name}')">${p.name}</button>`
+  const others = Object.values(players).filter(n => n !== myName);
+  document.getElementById("pickGrid").innerHTML = others.map(name =>
+    `<button class="pick-btn" onclick="pickPlayer('${name}')">${name}</button>`
   ).join("");
 }
 
 function pickPlayer(name) {
-  document.querySelectorAll(".pick-btn").forEach(b => b.classList.remove("selected"));
   document.querySelectorAll(".pick-btn").forEach(b => {
-    if (b.textContent === name) b.classList.add("selected");
+    b.classList.toggle("selected", b.textContent === name);
+    b.disabled = true;
   });
   setTimeout(() => {
-    const msg = { type: "picked", picked: name, by: myName };
-    if (isHost) {
-      // Host relays directly
-      broadcast(msg);
-      handleMsg(msg, null);
-    } else {
-      sendToHost(msg);
-    }
+    roomRef.child("state").update({
+      screen: "picked",
+      pickedPerson: name,
+      pickedBy: myName
+    });
+    roomRef.child("votes").set({ voterIds: {} });
   }, 300);
 }
 
 // ─────────────────────────────────────────────
-// PICKED SCREEN
+// VOTING
 // ─────────────────────────────────────────────
-function renderPicked() {
-  document.getElementById("pickedName").textContent = pickedPerson;
-  document.getElementById("voteCounts").textContent = "";
-  document.getElementById("voteReveal").disabled = false;
-  document.getElementById("voteSecret").disabled = false;
-}
+document.getElementById("voteReveal").addEventListener("click", () => castVote("reveal"));
+document.getElementById("voteSecret").addEventListener("click", () => castVote("secret"));
 
-document.getElementById("voteReveal").addEventListener("click", () => {
+function castVote(choice) {
+  if (hasVoted) return;
+  hasVoted = true;
   document.getElementById("voteReveal").disabled = true;
   document.getElementById("voteSecret").disabled = true;
-  const msg = { type: "vote", choice: "reveal", name: myName };
-  if (isHost) {
-    handleMsg(msg, null);
-  } else {
-    sendToHost(msg);
-  }
-});
 
-document.getElementById("voteSecret").addEventListener("click", () => {
-  document.getElementById("voteReveal").disabled = true;
-  document.getElementById("voteSecret").disabled = true;
-  const msg = { type: "vote", choice: "secret", name: myName };
-  if (isHost) {
-    handleMsg(msg, null);
-  } else {
-    sendToHost(msg);
-  }
-});
-
-function updateVoteCountsRaw(reveal, secret, total) {
-  const done = reveal + secret;
-  document.getElementById("voteCounts").textContent =
-    `${done}/${total} voted · ${reveal} reveal · ${secret} secret`;
+  const key = safeKey(myName);
+  roomRef.child("votes/voterIds/" + key).set(choice);
 }
 
-function resolveVote() {
-  if (votes.reveal.length >= votes.secret.length) {
-    const msg = { type: "reveal", question: currentQ, picked: pickedPerson, by: pickedBy };
-    broadcast(msg);
-    handleMsg(msg, null);
-  } else {
-    const msg = { type: "secret", picked: pickedPerson };
-    broadcast(msg);
-    handleMsg(msg, null);
-  }
+function resolveVote(reveal, secret) {
+  // Guard: only resolve once
+  roomRef.child("state/screen").once("value", snap => {
+    if (snap.val() !== "picked") return; // already resolved
+    if (reveal >= secret) {
+      roomRef.child("state").update({ screen: "reveal" });
+    } else {
+      roomRef.child("state").update({ screen: "secret" });
+    }
+  });
 }
 
 // ─────────────────────────────────────────────
 // NEXT ROUND
 // ─────────────────────────────────────────────
 function nextRound() {
-  if (!isHost) { showScreen("lobby"); renderLobby(); return; }
-  const available = QUESTIONS.filter(q => !usedQs.includes(q));
-  const pool = available.length === 0 ? QUESTIONS : available;
-  const q = pool[Math.floor(Math.random() * pool.length)];
-  usedQs = [...usedQs.filter(x => x !== q), q];
-  const msg = { type: "start", question: q, usedQs };
-  handleMsg(msg, null);
-  broadcast(msg);
+  if (isHost) {
+    startNewRound();
+  } else {
+    showScreen("lobby");
+    lastScreen = ""; // allow re-entry to lobby
+  }
 }
 
 document.getElementById("nextRoundBtn").addEventListener("click",  nextRound);
