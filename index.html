@@ -621,18 +621,22 @@ function listenToRoom() {
     const voterIds = v.voterIds || {};
     const reveal = Object.values(voterIds).filter(x => x === "reveal").length;
     const secret = Object.values(voterIds).filter(x => x === "secret").length;
-    const total  = Object.keys(players).length;
     const done   = reveal + secret;
 
-    if (done > 0) {
-      document.getElementById("voteCounts").textContent =
-        `${done}/${total} voted · ${reveal} reveal · ${secret} secret`;
-    }
+    // Read player count fresh from DB to avoid stale local state
+    roomRef.child("players").once("value", psnap => {
+      const total = Object.keys(psnap.val() || {}).length;
 
-    // Host resolves when everyone voted
-    if (isHost && total > 0 && done >= total) {
-      resolveVote(reveal, secret);
-    }
+      if (done > 0) {
+        document.getElementById("voteCounts").textContent =
+          `${done}/${total} voted · ${reveal} reveal · ${secret} secret`;
+      }
+
+      // Host resolves only when ALL players have voted
+      if (isHost && total > 1 && done >= total) {
+        resolveVote(reveal, secret);
+      }
+    });
   });
 }
 
