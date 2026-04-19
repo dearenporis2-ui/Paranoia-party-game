@@ -717,6 +717,7 @@ function kickPlayer(key) {
 document.getElementById("startBtn").addEventListener("click", () => { if (isHost) startNewRound(); });
 
 function startNewRound() {
+  console.log("startNewRound firing, pack=", selectedPack, "roomRef=", !!roomRef);
   const pack = PACKS[selectedPack] || PACKS.savage;
   const available = pack.filter(q => !usedQs.includes(q));
   const pool = available.length === 0 ? pack : available;
@@ -843,11 +844,23 @@ document.getElementById("muteBtn").addEventListener("click", () => {
 
 // ─── NEXT ROUND ─────────────────────────────
 function nextRound() {
-  if (!isHost) return;
+  console.log("nextRound called, isHost=", isHost, "roomRef=", !!roomRef);
+  if (!isHost) { console.log("not host, returning"); return; }
   startNewRound();
 }
-document.getElementById("nextRoundBtn").addEventListener("click",  nextRound);
-document.getElementById("nextRoundBtn2").addEventListener("click", nextRound);
+
+function startNewRoundDebug() {
+  console.log("startNewRound called, selectedPack=", selectedPack, "roomRef=", !!roomRef);
+}
+
+document.getElementById("nextRoundBtn").addEventListener("click", () => {
+  console.log("nextRoundBtn clicked");
+  nextRound();
+});
+document.getElementById("nextRoundBtn2").addEventListener("click", () => {
+  console.log("nextRoundBtn2 clicked");
+  nextRound();
+});
 </script>
 <!-- MUSIC BAR -->
 <div id="musicBar">
